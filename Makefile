@@ -20,3 +20,14 @@ clean:
 	$(RM) $(BINPATH)/*.pyc $(BINPATH)/*.pyo
 	$(RM) $(STUNPATH)/*.pyc $(STUNPATH)/*.pyo
 	$(RM) $(TESTPATH)/*.pyc $(TESTPATH)/*.pyo
+
+
+install:
+	python3 setup.py install
+
+uninstall:
+	pip3 uninstall pystun
+
+reinstall:
+	pip3 uninstall pystun
+	python3 setup.py install
