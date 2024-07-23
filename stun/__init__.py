@@ -2,21 +2,13 @@ import binascii
 import logging
 import random
 import socket
+import requests
 
-__version__ = '0.1.1'
+__version__ = '0.2.0'
 
 log = logging.getLogger("pystun")
 
-STUN_SERVERS = (
-    'stun.ekiga.net',
-    'stun.ideasip.com',
-    'stun.voiparound.com',
-    'stun.voipbuster.com',
-    'stun.voipstunt.com',
-    'stun.callwithus.com'
-)
 
-stun_servers_list = STUN_SERVERS
 
 DEFAULTS = {
     'stun_port': 3478,
@@ -191,12 +183,30 @@ def get_nat_type(s, source_ip, source_port, stun_host=None, stun_port=3478):
         ret = stun_test(s, stun_host, port, source_ip, source_port)
         resp = ret['Resp']
     else:
-        for stun_host in stun_servers_list:
+        try:
+            stun_lists_resp = requests.get(
+                'https://raw.githubusercontent.com/pradt2/always-online-stun/master/valid_ipv4s.txt'
+            )
+        except Exception as e:
+            log.error("request error:" + str(e.args))
+            return 'Request for stun server list failed', {'ExternalIP': 'Unknown', 'ExternalPort': 'Unknown'}
+
+    if stun_lists_resp.status_code == 200:
+        stun_lists_content = stun_lists_resp.content.decode('utf-8')
+        stun_lists = stun_lists_content.split("\n")
+        for stun_list in stun_lists:
+            stun_host, stun_port = stun_list.split(":")
             log.debug('Trying STUN host: %s', stun_host)
-            ret = stun_test(s, stun_host, port, source_ip, source_port)
+            ret = stun_test(s, stun_host, int(stun_port), source_ip, source_port)
             resp = ret['Resp']
             if resp:
                 break
+     
+    else:
+        log.error("response bad status code " + str(stun_lists_resp.status_code))
+        return 'Request for stun server list failed', {'ExternalIP': 'Unknown', 'ExternalPort': 'Unknown'}
+
+    
     if not resp:
         return Blocked, ret
     log.debug("Result: %s", ret)
